@@ -16,6 +16,8 @@ public interface RatingRepository extends JpaRepository<Rating, Long> {
 
     long countByPdfId(Long pdfId);
 
+    long countByUserId(Long userId);
+
     @Query("SELECT AVG(r.stars) FROM Rating r WHERE r.pdf.id = :pdfId")
     Double averageForPdf(@Param("pdfId") Long pdfId);
 

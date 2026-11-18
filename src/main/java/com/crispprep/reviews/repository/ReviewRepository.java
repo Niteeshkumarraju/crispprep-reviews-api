@@ -11,4 +11,6 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     List<Review> findByApprovedFalseOrderByCreatedAtAsc();
 
     boolean existsByPdfIdAndUserId(Long pdfId, Long userId);
+
+    long countByUserId(Long userId);
 }

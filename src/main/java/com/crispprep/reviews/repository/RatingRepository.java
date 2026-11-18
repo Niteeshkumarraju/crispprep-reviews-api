@@ -21,6 +21,12 @@ public interface RatingRepository extends JpaRepository<Rating, Long> {
     @Query("SELECT AVG(r.stars) FROM Rating r WHERE r.pdf.id = :pdfId")
     Double averageForPdf(@Param("pdfId") Long pdfId);
 
+    /** Every rated PDF's average and count, keyed by the website's slug (for the stars on the PDF cards). */
+    @Query("SELECT p.slug AS slug, AVG(r.stars) AS average, COUNT(r.id) AS ratings FROM Rating r JOIN r.pdf p WHERE p.slug IS NOT NULL GROUP BY p.slug")
+    List<SlugRating> allBySlug();
+
+    interface SlugRating { String getSlug(); Double getAverage(); Long getRatings(); }
+
     /** Top 5 PDFs by average stars (JPQL, so it runs on both MySQL and PostgreSQL). */
     @Query("""
             SELECT p.id AS pdfId, p.title AS title, AVG(r.stars) AS average, COUNT(r.id) AS ratings

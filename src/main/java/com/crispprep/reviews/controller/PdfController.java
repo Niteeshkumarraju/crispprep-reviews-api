@@ -10,6 +10,7 @@ import com.crispprep.reviews.repository.RatingRepository;
 import com.crispprep.reviews.service.CurrentUser;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/pdfs")
@@ -43,18 +45,33 @@ public class PdfController {
         return pdfRepository.findAll();
     }
 
-    /** Rate a PDF as the logged-in user (needs a token). One rating per user per PDF. */
+    /** Rate a PDF as the logged-in user (needs a token). One rating per user per PDF; rating again changes it. */
     @PostMapping("/{id}/ratings")
-    @ResponseStatus(HttpStatus.CREATED)
-    public Map<String, Object> addRating(@PathVariable Long id, @Valid @RequestBody RatingRequest request,
-                                         @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<Map<String, Object>> addRating(@PathVariable Long id, @Valid @RequestBody RatingRequest request,
+                                                         @AuthenticationPrincipal Jwt jwt) {
         Pdf pdf = findPdf(id);
         User user = currentUser.from(jwt);
-        if (ratingRepository.existsByPdfIdAndUserId(id, user.getId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "You already rated this PDF");
+        Optional<Rating> old = ratingRepository.findByPdfIdAndUserId(id, user.getId());
+        Rating saved;
+        if (old.isPresent()) {
+            old.get().changeStars(request.stars());
+            saved = ratingRepository.save(old.get());
+        } else {
+            saved = ratingRepository.save(new Rating(pdf, user, request.stars()));
         }
-        Rating saved = ratingRepository.save(new Rating(pdf, user, request.stars()));
-        return Map.of("ratingId", saved.getId(), "pdfId", pdf.getId(), "user", user.getName(), "stars", saved.getStars());
+        Map<String, Object> out = summary(id, jwt);
+        out.put("myRating", saved.getStars());
+        return ResponseEntity.status(old.isPresent() ? HttpStatus.OK : HttpStatus.CREATED).body(out);
+    }
+
+    /** Public: average + count for every rated PDF, by slug, e.g. {"Polity-Day-02-Preamble": {"average": 4.5, "count": 2}}. */
+    @GetMapping("/ratings")
+    public Map<String, Object> allRatings() {
+        Map<String, Object> out = new LinkedHashMap<>();
+        for (RatingRepository.SlugRating r : ratingRepository.allBySlug()) {
+            out.put(r.getSlug(), Map.of("average", Math.round(r.getAverage() * 10) / 10.0, "count", r.getRatings()));
+        }
+        return out;
     }
 
     /** Public: average rating and count. With a token, also returns the caller's own rating. */

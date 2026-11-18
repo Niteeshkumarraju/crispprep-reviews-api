@@ -32,6 +32,9 @@ public class Rating {
         this.stars = stars;
     }
 
+    /** A user can change their mind: rating again replaces the old stars. */
+    public void changeStars(int stars) { this.stars = stars; }
+
     public Long getId() { return id; }
     public int getStars() { return stars; }
     public Pdf getPdf() { return pdf; }

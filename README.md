@@ -5,7 +5,7 @@ Backend for the ratings and reviews feature of [CrispPrep](https://crispprep.pag
 **Stack:** Java 21 · Spring Boot 4 · Spring Security (JWT) · Spring Data JPA (Hibernate) · MySQL 8 · Bean Validation · OpenAPI/Swagger
 
 ## Features
-- **Accounts:** sign up and log in with email + password (passwords hashed with BCrypt), stateless **JWT** tokens, roles STUDENT / ADMIN
+- **Accounts:** sign up and log in with email + password (BCrypt-hashed) **or Google sign-in** (Google ID token verified on the server, accounts linked by verified email); stateless **JWT** tokens, roles STUDENT / ADMIN
 - Logged-in students add **1–5 star ratings**, **one per user per PDF** (409 on a duplicate, also enforced by a unique key)
 - **Average rating per PDF** and **top-rated PDFs**, computed in SQL with JOIN, AVG and GROUP BY
 - **Consent-based reviews:** one per user per PDF, rejected without consent, public only after admin approval
@@ -17,6 +17,8 @@ Backend for the ratings and reviews feature of [CrispPrep](https://crispprep.pag
 |---|---|---|
 | POST | `/api/auth/register` | Sign up `{"name","email","password"}` → token |
 | POST | `/api/auth/login` | Log in `{"email","password"}` → token |
+| POST | `/api/auth/google` | Sign in with Google `{"idToken"}` → token |
+| GET | `/api/auth/google/config` | Google client id for the web page |
 | GET | `/api/me` | Current user (needs token) |
 | GET | `/api/pdfs` | List PDFs |
 | POST | `/api/pdfs/{id}/ratings` | Rate as the logged-in user `{"stars"}` (token) |
@@ -69,11 +71,11 @@ erDiagram
    - `$env:DB_PASSWORD="your-mysql-password"`
    - `$env:JWT_SECRET="at-least-32-random-characters"` (keep the same value between restarts)
    - `$env:ADMIN_EMAIL="you@example.com"` (signing up with this email makes you ADMIN)
+   - `$env:GOOGLE_CLIENT_ID="...apps.googleusercontent.com"` (optional, enables Google sign-in; test page: http://localhost:8080/google-test.html)
 3. Run: `./mvnw spring-boot:run`
 4. Open: http://localhost:8080/swagger-ui/index.html
 
 ## Next steps
-- Google sign-in
 - Founding Club memberships and payments
 - Flyway migrations instead of `ddl-auto=update`
 - Unit and integration tests

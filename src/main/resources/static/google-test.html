@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CrispPrep · Google sign-in test</title>
+  <script src="https://accounts.google.com/gsi/client" async></script>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 680px; margin: 40px auto; padding: 0 16px; color: #111827; }
+    h1 { font-size: 24px; } p { color: #4b5563; }
+    pre { background: #0f172a; color: #e2e8f0; padding: 14px; border-radius: 10px; white-space: pre-wrap; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <h1>CrispPrep · Google sign-in test</h1>
+  <p>Click the button, pick a Google account, and the server's reply appears below. Copy the <b>token</b> into Swagger's Authorize box.</p>
+  <div id="btn"></div>
+  <pre id="out">Loading…</pre>
+  <script>
+    const out = document.getElementById('out');
+    const waitForGoogle = () => new Promise((ok) => { const t = setInterval(() => { if (window.google && google.accounts) { clearInterval(t); ok(); } }, 100); });
+    (async () => {
+      const cfg = await (await fetch('/api/auth/google/config')).json();
+      if (!cfg.enabled) { out.textContent = 'Google sign-in is not configured: start the app with GOOGLE_CLIENT_ID set.'; return; }
+      await waitForGoogle();
+      google.accounts.id.initialize({
+        client_id: cfg.clientId,
+        callback: async (resp) => {
+          const r = await fetch('/api/auth/google', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                                     body: JSON.stringify({ idToken: resp.credential }) });
+          out.textContent = 'HTTP ' + r.status + '\n' + JSON.stringify(await r.json(), null, 2);
+        }
+      });
+      google.accounts.id.renderButton(document.getElementById('btn'), { theme: 'filled_blue', size: 'large', text: 'continue_with', shape: 'pill' });
+      out.textContent = 'Ready.';
+    })();
+  </script>
+</body>
+</html>

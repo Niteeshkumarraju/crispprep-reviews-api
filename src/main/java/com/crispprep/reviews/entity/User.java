@@ -40,6 +40,9 @@ public class User {
         this.role = role;
     }
 
+    /** Connect a Google account (Google's stable user id, the token's "sub"). */
+    public void linkGoogle(String googleId) { this.googleId = googleId; }
+
     public Long getId() { return id; }
     public String getEmail() { return email; }
     public String getName() { return name; }

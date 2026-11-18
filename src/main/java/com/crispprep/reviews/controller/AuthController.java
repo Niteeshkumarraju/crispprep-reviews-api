@@ -1,10 +1,12 @@
 package com.crispprep.reviews.controller;
 
 import com.crispprep.reviews.dto.AuthResponse;
+import com.crispprep.reviews.dto.GoogleLoginRequest;
 import com.crispprep.reviews.dto.LoginRequest;
 import com.crispprep.reviews.dto.RegisterRequest;
 import com.crispprep.reviews.entity.User;
 import com.crispprep.reviews.repository.UserRepository;
+import com.crispprep.reviews.service.GoogleTokenVerifier;
 import com.crispprep.reviews.service.TokenService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -24,12 +27,14 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokens;
     private final String adminEmail;
+    private final GoogleTokenVerifier google;
 
     public AuthController(UserRepository users, PasswordEncoder passwordEncoder, TokenService tokens,
-                          @Value("${app.admin-email}") String adminEmail) {
+                          GoogleTokenVerifier google, @Value("${app.admin-email}") String adminEmail) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.tokens = tokens;
+        this.google = google;
         this.adminEmail = adminEmail == null ? "" : adminEmail.trim();
     }
 
@@ -44,8 +49,7 @@ public class AuthController {
         if (users.existsByEmail(email)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "An account with this email already exists");
         }
-        User.Role role = !adminEmail.isEmpty() && email.equalsIgnoreCase(adminEmail) ? User.Role.ADMIN : User.Role.STUDENT;
-        User saved = users.save(new User(email, req.name().trim(), passwordEncoder.encode(req.password()), role));
+        User saved = users.save(new User(email, req.name().trim(), passwordEncoder.encode(req.password()), roleFor(email)));
         return response(saved);
     }
 
@@ -55,6 +59,53 @@ public class AuthController {
                 .filter(x -> x.getPasswordHash() != null && passwordEncoder.matches(req.password(), x.getPasswordHash()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Wrong email or password"));
         return response(u);
+    }
+
+    private User.Role roleFor(String email) {
+        return !adminEmail.isEmpty() && email.equalsIgnoreCase(adminEmail) ? User.Role.ADMIN : User.Role.STUDENT;
+    }
+
+    /** Public: the Google client id the web page needs to show the button (it is not a secret). */
+    @GetMapping("/api/auth/google/config")
+    public Map<String, Object> googleConfig() {
+        return Map.of("enabled", google.enabled(), "clientId", google.clientId());
+    }
+
+    /**
+     * Sign in with Google. The page sends Google's ID token; we verify it, then find or create the user and
+     * return our own JWT. A verified Google email that matches an email/password account is linked to it.
+     */
+    @PostMapping("/api/auth/google")
+    public AuthResponse googleLogin(@Valid @RequestBody GoogleLoginRequest req) {
+        if (!google.enabled()) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Google sign-in is not configured");
+        }
+        Jwt g;
+        try {
+            g = google.verify(req.idToken());
+        } catch (JwtException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Google sign-in failed, please try again");
+        }
+        String email = g.getClaimAsString("email");
+        if (email == null || !Boolean.TRUE.equals(g.getClaimAsBoolean("email_verified"))) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Your Google email is not verified");
+        }
+        String googleId = g.getSubject();
+        String cleanEmail = email.trim().toLowerCase();
+        String name = g.getClaimAsString("name");
+        if (name == null || name.isBlank()) name = cleanEmail.substring(0, cleanEmail.indexOf('@'));
+        final String displayName = name.length() > 60 ? name.substring(0, 60) : name;
+
+        User user = users.findByGoogleId(googleId).orElseGet(() ->
+                users.findByEmail(cleanEmail).map(existing -> {          // link an existing email/password account
+                    existing.linkGoogle(googleId);
+                    return users.save(existing);
+                }).orElseGet(() -> {                                     // first time: create a new account
+                    User created = new User(cleanEmail, displayName, null, roleFor(cleanEmail));
+                    created.linkGoogle(googleId);
+                    return users.save(created);
+                }));
+        return response(user);
     }
 
     @GetMapping("/api/me")

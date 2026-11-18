@@ -2,9 +2,10 @@
 
 Backend for the ratings and reviews feature of [CrispPrep](https://crispprep.pages.dev), a free study-notes site for government-exam aspirants.
 
-**Stack:** Java 21 · Spring Boot 4 · Spring Data JPA (Hibernate) · MySQL 8 · Bean Validation · OpenAPI/Swagger
+**Stack:** Java 21 · Spring Boot 4 · Spring Security (JWT) · Spring Data JPA (Hibernate) · MySQL 8 · Bean Validation · OpenAPI/Swagger
 
 ## Features
+- **Accounts:** sign up and log in with email + password (passwords hashed with BCrypt), stateless **JWT** tokens, roles STUDENT / ADMIN
 - List PDFs and add **1–5 star ratings**, with **one rating per user per PDF** (409 on a duplicate)
 - **Average rating per PDF** and **top-rated PDFs**, computed in SQL with JOIN, AVG and GROUP BY
 - **Consent-based reviews:** a review is rejected without consent, and only admin-approved reviews are public
@@ -14,6 +15,9 @@ Backend for the ratings and reviews feature of [CrispPrep](https://crispprep.pag
 ## Endpoints
 | Method | Path | What it does |
 |---|---|---|
+| POST | `/api/auth/register` | Sign up `{"name","email","password"}` → token |
+| POST | `/api/auth/login` | Log in `{"email","password"}` → token |
+| GET | `/api/me` | Current user (needs token) |
 | GET | `/api/pdfs` | List PDFs |
 | POST | `/api/pdfs/{id}/ratings` | Add a rating `{"userName","stars"}` |
 | GET | `/api/pdfs/{id}/summary` | Average rating + count |
@@ -22,9 +26,17 @@ Backend for the ratings and reviews feature of [CrispPrep](https://crispprep.pag
 | GET | `/api/pdfs/{id}/reviews` | Approved reviews only |
 | PUT | `/api/admin/reviews/{id}/approve` | Approve a review |
 
+**Access:** `GET /api/pdfs/**` and `/api/auth/**` are public. Everything else needs `Authorization: Bearer <token>`; `/api/admin/**` needs the ADMIN role.
+
 ## Database design
 ```mermaid
 erDiagram
+    USERS { bigint id PK
+            varchar email UK
+            varchar name
+            varchar password_hash
+            varchar google_id UK
+            varchar role }
     PDF ||--o{ RATING : has
     PDF ||--o{ REVIEW : has
     PDF { bigint id PK
@@ -50,12 +62,17 @@ erDiagram
 
 ## Run locally
 1. Create the database: `CREATE DATABASE crispprep;`
-2. Set the password (it is never stored in code): `$env:DB_PASSWORD="your-password"`
+2. Set the secrets (they are never stored in code):
+   - `$env:DB_PASSWORD="your-mysql-password"`
+   - `$env:JWT_SECRET="at-least-32-random-characters"` (keep the same value between restarts)
+   - `$env:ADMIN_EMAIL="you@example.com"` (signing up with this email makes you ADMIN)
 3. Run: `./mvnw spring-boot:run`
 4. Open: http://localhost:8080/swagger-ui/index.html
 
 ## Next steps
-- Spring Security + JWT so only admins can approve reviews
+- Google sign-in
+- Tie ratings and reviews to the logged-in user
+- Founding Club memberships and payments
 - Flyway migrations instead of `ddl-auto=update`
 - Unit and integration tests
 - Deploy and connect to the CrispPrep website

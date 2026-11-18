@@ -39,6 +39,10 @@ public class AuthController {
     }
 
     private AuthResponse response(User u) {
+        if (u.getRole() != User.Role.ADMIN && roleFor(u.getEmail()) == User.Role.ADMIN) {   // ADMIN_EMAIL set later
+            u.makeAdmin();
+            u = users.save(u);
+        }
         return new AuthResponse(tokens.createToken(u), TokenService.EXPIRES_IN, u.getId(), u.getName(), u.getEmail(), u.getRole().name());
     }
 

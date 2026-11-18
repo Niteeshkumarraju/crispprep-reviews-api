@@ -43,6 +43,9 @@ public class User {
     /** Connect a Google account (Google's stable user id, the token's "sub"). */
     public void linkGoogle(String googleId) { this.googleId = googleId; }
 
+    /** Used when ADMIN_EMAIL is set after this account already exists. */
+    public void makeAdmin() { this.role = Role.ADMIN; }
+
     public Long getId() { return id; }
     public String getEmail() { return email; }
     public String getName() { return name; }

@@ -74,6 +74,16 @@ public class PdfController {
         return out;
     }
 
+    /** Same as summary, looked up by the website's slug (what the PDF pages know). */
+    @GetMapping("/slug/{slug}/summary")
+    public Map<String, Object> summaryBySlug(@PathVariable String slug, @AuthenticationPrincipal Jwt jwt) {
+        Pdf pdf = pdfRepository.findBySlug(slug)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PDF not found"));
+        Map<String, Object> out = summary(pdf.getId(), jwt);
+        out.put("slug", slug);
+        return out;
+    }
+
     @GetMapping("/top")
     public List<TopPdf> topRated() {
         return ratingRepository.findTopRated();

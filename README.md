@@ -22,6 +22,7 @@ Backend for the ratings and reviews feature of [CrispPrep](https://crispprep.pag
 | GET | `/api/me` | Current user (needs token) |
 | GET | `/api/pdfs` | List PDFs |
 | POST | `/api/pdfs/{id}/ratings` | Rate as the logged-in user `{"stars"}` (token) |
+| GET | `/api/pdfs/slug/{slug}/summary` | Same as summary, by the website's PDF slug |
 | GET | `/api/pdfs/{id}/summary` | Average rating + count (+ `myRating` with a token) |
 | GET | `/api/pdfs/top` | Top 5 PDFs by average rating |
 | POST | `/api/pdfs/{id}/reviews` | Review as the logged-in user `{"text","consent"}` (token) |
@@ -64,6 +65,12 @@ erDiagram
 
 ## Architecture
 `Controller → Repository → MySQL`, with DTOs for input and output and a global `@RestControllerAdvice` for errors.
+
+## Deploy (Docker)
+The `Dockerfile` builds and runs the app. Set these environment variables on the host:
+`DB_URL` (e.g. `jdbc:mysql://HOST:PORT/crispprep?sslMode=REQUIRED`), `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `ADMIN_EMAIL`,
+`GOOGLE_CLIENT_ID`, and optionally `CORS_ORIGINS` (default allows https://crispprep.pages.dev). The host's `PORT` is used automatically.
+At startup the PDF list is synced from https://crispprep.pages.dev/resources.json (by slug).
 
 ## Run locally
 1. Create the database: `CREATE DATABASE crispprep;`

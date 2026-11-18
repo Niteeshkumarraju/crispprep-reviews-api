@@ -6,9 +6,9 @@ Backend for the ratings and reviews feature of [CrispPrep](https://crispprep.pag
 
 ## Features
 - **Accounts:** sign up and log in with email + password (passwords hashed with BCrypt), stateless **JWT** tokens, roles STUDENT / ADMIN
-- List PDFs and add **1–5 star ratings**, with **one rating per user per PDF** (409 on a duplicate)
+- Logged-in students add **1–5 star ratings**, **one per user per PDF** (409 on a duplicate, also enforced by a unique key)
 - **Average rating per PDF** and **top-rated PDFs**, computed in SQL with JOIN, AVG and GROUP BY
-- **Consent-based reviews:** a review is rejected without consent, and only admin-approved reviews are public
+- **Consent-based reviews:** one per user per PDF, rejected without consent, public only after admin approval
 - **Clean errors:** one JSON shape for every error (400 / 404 / 409 / 500), with the exact field that failed
 - **Swagger UI** to explore and test every endpoint
 
@@ -19,12 +19,13 @@ Backend for the ratings and reviews feature of [CrispPrep](https://crispprep.pag
 | POST | `/api/auth/login` | Log in `{"email","password"}` → token |
 | GET | `/api/me` | Current user (needs token) |
 | GET | `/api/pdfs` | List PDFs |
-| POST | `/api/pdfs/{id}/ratings` | Add a rating `{"userName","stars"}` |
-| GET | `/api/pdfs/{id}/summary` | Average rating + count |
+| POST | `/api/pdfs/{id}/ratings` | Rate as the logged-in user `{"stars"}` (token) |
+| GET | `/api/pdfs/{id}/summary` | Average rating + count (+ `myRating` with a token) |
 | GET | `/api/pdfs/top` | Top 5 PDFs by average rating |
-| POST | `/api/pdfs/{id}/reviews` | Submit a review (needs `consent: true`) |
+| POST | `/api/pdfs/{id}/reviews` | Review as the logged-in user `{"text","consent"}` (token) |
 | GET | `/api/pdfs/{id}/reviews` | Approved reviews only |
-| PUT | `/api/admin/reviews/{id}/approve` | Approve a review |
+| GET | `/api/admin/reviews/pending` | Reviews waiting for approval (ADMIN) |
+| PUT | `/api/admin/reviews/{id}/approve` | Approve a review (ADMIN) |
 
 **Access:** `GET /api/pdfs/**` and `/api/auth/**` are public. Everything else needs `Authorization: Bearer <token>`; `/api/admin/**` needs the ADMIN role.
 
@@ -37,6 +38,8 @@ erDiagram
             varchar password_hash
             varchar google_id UK
             varchar role }
+    USERS ||--o{ RATING : gives
+    USERS ||--o{ REVIEW : writes
     PDF ||--o{ RATING : has
     PDF ||--o{ REVIEW : has
     PDF { bigint id PK
@@ -44,18 +47,18 @@ erDiagram
           varchar subject }
     RATING { bigint id PK
              int stars
-             varchar user_name
+             bigint user_id FK
              bigint pdf_id FK
              datetime created_at }
     REVIEW { bigint id PK
-             varchar user_name
+             bigint user_id FK
              varchar text
              boolean consent
              boolean approved
              bigint pdf_id FK
              datetime created_at }
 ```
-`rating` has a unique constraint on `(pdf_id, user_name)`.
+`rating` and `review` each have a unique constraint on `(pdf_id, user_id)`.
 
 ## Architecture
 `Controller → Repository → MySQL`, with DTOs for input and output and a global `@RestControllerAdvice` for errors.
@@ -71,7 +74,6 @@ erDiagram
 
 ## Next steps
 - Google sign-in
-- Tie ratings and reviews to the logged-in user
 - Founding Club memberships and payments
 - Flyway migrations instead of `ddl-auto=update`
 - Unit and integration tests

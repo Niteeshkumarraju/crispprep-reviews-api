@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import java.time.Instant;
 
 @Entity
+@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"pdf_id", "user_id"}))
 public class Review {
 
     @Id
@@ -14,8 +15,9 @@ public class Review {
     @JoinColumn(name = "pdf_id")
     private Pdf pdf;
 
-    @Column(name = "user_name", nullable = false, length = 50)
-    private String userName;
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "user_id")
+    private User user;
 
     @Column(nullable = false, length = 500)
     private String text;
@@ -30,9 +32,9 @@ public class Review {
 
     protected Review() { }
 
-    public Review(Pdf pdf, String userName, String text, boolean consent) {
+    public Review(Pdf pdf, User user, String text, boolean consent) {
         this.pdf = pdf;
-        this.userName = userName;
+        this.user = user;
         this.text = text;
         this.consent = consent;
     }
@@ -41,7 +43,7 @@ public class Review {
 
     public Long getId() { return id; }
     public Pdf getPdf() { return pdf; }
-    public String getUserName() { return userName; }
+    public User getUser() { return user; }
     public String getText() { return text; }
     public boolean isConsent() { return consent; }
     public boolean isApproved() { return approved; }

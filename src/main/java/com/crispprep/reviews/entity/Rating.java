@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.time.Instant;
 
 @Entity
-@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"pdf_id", "user_name"}))
+@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"pdf_id", "user_id"}))
 public class Rating {
 
     @Id
@@ -14,26 +14,27 @@ public class Rating {
     @Column(nullable = false)
     private int stars;
 
-    @Column(name = "user_name", nullable = false, length = 50)
-    private String userName;
-
     @ManyToOne(optional = false)
     @JoinColumn(name = "pdf_id")
     private Pdf pdf;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "user_id")
+    private User user;
 
     private Instant createdAt = Instant.now();
 
     protected Rating() { }
 
-    public Rating(Pdf pdf, String userName, int stars) {
+    public Rating(Pdf pdf, User user, int stars) {
         this.pdf = pdf;
-        this.userName = userName;
+        this.user = user;
         this.stars = stars;
     }
 
     public Long getId() { return id; }
     public int getStars() { return stars; }
-    public String getUserName() { return userName; }
     public Pdf getPdf() { return pdf; }
+    public User getUser() { return user; }
     public Instant getCreatedAt() { return createdAt; }
 }

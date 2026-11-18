@@ -7,4 +7,8 @@ import java.util.List;
 public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     List<Review> findByPdfIdAndApprovedTrueOrderByCreatedAtDesc(Long pdfId);
+
+    List<Review> findByApprovedFalseOrderByCreatedAtAsc();
+
+    boolean existsByPdfIdAndUserId(Long pdfId, Long userId);
 }

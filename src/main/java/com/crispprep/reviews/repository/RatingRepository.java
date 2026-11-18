@@ -19,16 +19,13 @@ public interface RatingRepository extends JpaRepository<Rating, Long> {
     @Query("SELECT AVG(r.stars) FROM Rating r WHERE r.pdf.id = :pdfId")
     Double averageForPdf(@Param("pdfId") Long pdfId);
 
-    @Query(value = """
-            SELECT p.id AS pdfId,
-                   p.title AS title,
-                   CAST(ROUND(AVG(r.stars), 2) AS DOUBLE) AS average,
-                   COUNT(r.id) AS ratings
-            FROM pdf p
-            JOIN rating r ON r.pdf_id = p.id
+    /** Top 5 PDFs by average stars (JPQL, so it runs on both MySQL and PostgreSQL). */
+    @Query("""
+            SELECT p.id AS pdfId, p.title AS title, AVG(r.stars) AS average, COUNT(r.id) AS ratings
+            FROM Rating r JOIN r.pdf p
             GROUP BY p.id, p.title
-            ORDER BY average DESC, ratings DESC
+            ORDER BY AVG(r.stars) DESC, COUNT(r.id) DESC
             LIMIT 5
-            """, nativeQuery = true)
+            """)
     List<TopPdf> findTopRated();
 }

@@ -2,7 +2,7 @@
 
 Backend for the ratings and reviews feature of [CrispPrep](https://crispprep.pages.dev), a free study-notes site for government-exam aspirants.
 
-**Stack:** Java 21 · Spring Boot 4 · Spring Security (JWT) · Spring Data JPA (Hibernate) · MySQL 8 · Bean Validation · OpenAPI/Swagger
+**Stack:** Java 21 · Spring Boot 4 · Spring Security (JWT) · Spring Data JPA (Hibernate) · MySQL 8 or PostgreSQL · Bean Validation · OpenAPI/Swagger
 
 ## Features
 - **Accounts:** sign up and log in with email + password (BCrypt-hashed) **or Google sign-in** (Google ID token verified on the server, accounts linked by verified email); stateless **JWT** tokens, roles STUDENT / ADMIN
@@ -68,7 +68,7 @@ erDiagram
 
 ## Deploy (Docker)
 The `Dockerfile` builds and runs the app. Set these environment variables on the host:
-`DB_URL` (e.g. `jdbc:mysql://HOST:PORT/crispprep?sslMode=REQUIRED`), `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `ADMIN_EMAIL`,
+`DB_URL` (MySQL `jdbc:mysql://HOST:PORT/crispprep?sslMode=REQUIRED` or PostgreSQL, e.g. Neon `jdbc:postgresql://HOST/DB?sslmode=require`), `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `ADMIN_EMAIL`,
 `GOOGLE_CLIENT_ID`, and optionally `CORS_ORIGINS` (default allows https://crispprep.pages.dev). The host's `PORT` is used automatically.
 At startup the PDF list is synced from https://crispprep.pages.dev/resources.json (by slug).
 

@@ -2,11 +2,13 @@ package com.crispprep.reviews.controller;
 
 import com.crispprep.reviews.dto.RatingRequest;
 import com.crispprep.reviews.dto.TopPdf;
+import com.crispprep.reviews.entity.ActivityEvent;
 import com.crispprep.reviews.entity.Pdf;
 import com.crispprep.reviews.entity.Rating;
 import com.crispprep.reviews.entity.User;
 import com.crispprep.reviews.repository.PdfRepository;
 import com.crispprep.reviews.repository.RatingRepository;
+import com.crispprep.reviews.service.ActivityService;
 import com.crispprep.reviews.service.CurrentUser;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -29,7 +31,10 @@ public class PdfController {
     private final RatingRepository ratingRepository;
     private final CurrentUser currentUser;
 
-    public PdfController(PdfRepository pdfRepository, RatingRepository ratingRepository, CurrentUser currentUser) {
+    private final ActivityService activity;
+
+    public PdfController(PdfRepository pdfRepository, RatingRepository ratingRepository, CurrentUser currentUser, ActivityService activity) {
+        this.activity = activity;
         this.pdfRepository = pdfRepository;
         this.ratingRepository = ratingRepository;
         this.currentUser = currentUser;
@@ -59,6 +64,7 @@ public class PdfController {
         } else {
             saved = ratingRepository.save(new Rating(pdf, user, request.stars()));
         }
+        activity.record(ActivityEvent.Type.RATE, user.getId(), pdf.getSlug(), String.valueOf(saved.getStars()));
         Map<String, Object> out = summary(id, jwt);
         out.put("myRating", saved.getStars());
         return ResponseEntity.status(old.isPresent() ? HttpStatus.OK : HttpStatus.CREATED).body(out);

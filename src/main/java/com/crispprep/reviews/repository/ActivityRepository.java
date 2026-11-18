@@ -1,0 +1,46 @@
+package com.crispprep.reviews.repository;
+
+import com.crispprep.reviews.entity.ActivityEvent;
+import com.crispprep.reviews.entity.ActivityEvent.Type;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.Collection;
+import java.util.List;
+
+public interface ActivityRepository extends JpaRepository<ActivityEvent, Long> {
+
+    long countByType(Type type);
+
+    long countByTypeAndCreatedAtGreaterThanEqual(Type type, Instant since);
+
+    @Query("SELECT COUNT(DISTINCT e.userId) FROM ActivityEvent e WHERE e.userId IS NOT NULL AND e.createdAt >= :since")
+    long activeUsersSince(@Param("since") Instant since);
+
+    interface SlugCount { String getSlug(); Long getN(); }
+
+    @Query("""
+            SELECT e.pdfSlug AS slug, COUNT(e) AS n FROM ActivityEvent e
+            WHERE e.type = :type AND e.createdAt >= :since AND e.pdfSlug IS NOT NULL
+            GROUP BY e.pdfSlug ORDER BY COUNT(e) DESC
+            """)
+    List<SlugCount> topSlugs(@Param("type") Type type, @Param("since") Instant since, Pageable page);
+
+    interface TypeTime { Type getType(); Instant getCreatedAt(); }
+
+    @Query("SELECT e.type AS type, e.createdAt AS createdAt FROM ActivityEvent e WHERE e.createdAt >= :since AND e.type IN :types")
+    List<TypeTime> timesSince(@Param("since") Instant since, @Param("types") Collection<Type> types);
+
+    @Query("SELECT e.userId AS userId, COUNT(e) AS n FROM ActivityEvent e WHERE e.type = :type AND e.userId IN :ids GROUP BY e.userId")
+    List<UserCount> countPerUser(@Param("type") Type type, @Param("ids") Collection<Long> ids);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM ActivityEvent e WHERE e.createdAt < :before")
+    int deleteOlderThan(@Param("before") Instant before);
+}

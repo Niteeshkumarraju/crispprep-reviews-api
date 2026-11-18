@@ -31,6 +31,9 @@ public class User {
 
     private Instant createdAt = Instant.now();
 
+    @Column(name = "last_login_at")
+    private Instant lastLoginAt;
+
     protected User() { }
 
     public User(String email, String name, String passwordHash, Role role) {
@@ -45,6 +48,9 @@ public class User {
 
     /** Used when ADMIN_EMAIL is set after this account already exists. */
     public void makeAdmin() { this.role = Role.ADMIN; }
+
+    public void touchLogin() { this.lastLoginAt = Instant.now(); }
+    public Instant getLastLoginAt() { return lastLoginAt; }
 
     public Long getId() { return id; }
     public String getEmail() { return email; }

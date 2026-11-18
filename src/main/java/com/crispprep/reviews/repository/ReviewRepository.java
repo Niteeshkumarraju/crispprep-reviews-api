@@ -13,4 +13,6 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     boolean existsByPdfIdAndUserId(Long pdfId, Long userId);
 
     long countByUserId(Long userId);
+
+    long countByApprovedFalse();
 }

@@ -4,7 +4,9 @@ import com.crispprep.reviews.dto.AuthResponse;
 import com.crispprep.reviews.dto.GoogleLoginRequest;
 import com.crispprep.reviews.dto.LoginRequest;
 import com.crispprep.reviews.dto.RegisterRequest;
+import com.crispprep.reviews.entity.ActivityEvent;
 import com.crispprep.reviews.entity.User;
+import com.crispprep.reviews.service.ActivityService;
 import com.crispprep.reviews.repository.UserRepository;
 import com.crispprep.reviews.service.GoogleTokenVerifier;
 import com.crispprep.reviews.service.TokenService;
@@ -28,9 +30,11 @@ public class AuthController {
     private final TokenService tokens;
     private final String adminEmail;
     private final GoogleTokenVerifier google;
+    private final ActivityService activity;
 
     public AuthController(UserRepository users, PasswordEncoder passwordEncoder, TokenService tokens,
-                          GoogleTokenVerifier google, @Value("${app.admin-email}") String adminEmail) {
+                          GoogleTokenVerifier google, ActivityService activity, @Value("${app.admin-email}") String adminEmail) {
+        this.activity = activity;
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.tokens = tokens;
@@ -38,11 +42,13 @@ public class AuthController {
         this.adminEmail = adminEmail == null ? "" : adminEmail.trim();
     }
 
-    private AuthResponse response(User u) {
+    private AuthResponse response(User u, ActivityEvent.Type what, String how) {
         if (u.getRole() != User.Role.ADMIN && roleFor(u.getEmail()) == User.Role.ADMIN) {   // ADMIN_EMAIL set later
             u.makeAdmin();
-            u = users.save(u);
         }
+        u.touchLogin();
+        u = users.save(u);
+        activity.record(what, u.getId(), null, how);
         return new AuthResponse(tokens.createToken(u), TokenService.EXPIRES_IN, u.getId(), u.getName(), u.getEmail(), u.getRole().name());
     }
 
@@ -54,7 +60,7 @@ public class AuthController {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "An account with this email already exists");
         }
         User saved = users.save(new User(email, req.name().trim(), passwordEncoder.encode(req.password()), roleFor(email)));
-        return response(saved);
+        return response(saved, ActivityEvent.Type.SIGNUP, "email");
     }
 
     @PostMapping("/api/auth/login")
@@ -62,7 +68,7 @@ public class AuthController {
         User u = users.findByEmail(req.email().trim().toLowerCase())
                 .filter(x -> x.getPasswordHash() != null && passwordEncoder.matches(req.password(), x.getPasswordHash()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Wrong email or password"));
-        return response(u);
+        return response(u, ActivityEvent.Type.LOGIN, "email");
     }
 
     private User.Role roleFor(String email) {
@@ -100,6 +106,7 @@ public class AuthController {
         if (name == null || name.isBlank()) name = cleanEmail.substring(0, cleanEmail.indexOf('@'));
         final String displayName = name.length() > 60 ? name.substring(0, 60) : name;
 
+        final boolean isNew = users.findByGoogleId(googleId).isEmpty() && users.findByEmail(cleanEmail).isEmpty();
         User user = users.findByGoogleId(googleId).orElseGet(() ->
                 users.findByEmail(cleanEmail).map(existing -> {          // link an existing email/password account
                     existing.linkGoogle(googleId);
@@ -109,7 +116,7 @@ public class AuthController {
                     created.linkGoogle(googleId);
                     return users.save(created);
                 }));
-        return response(user);
+        return response(user, isNew ? ActivityEvent.Type.SIGNUP : ActivityEvent.Type.LOGIN, "google");
     }
 
     @GetMapping("/api/me")

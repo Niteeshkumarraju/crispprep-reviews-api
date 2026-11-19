@@ -32,9 +32,12 @@ public class PdfController {
     private final CurrentUser currentUser;
 
     private final ActivityService activity;
+    private final com.crispprep.reviews.repository.ReviewRepository reviewRepository;
 
-    public PdfController(PdfRepository pdfRepository, RatingRepository ratingRepository, CurrentUser currentUser, ActivityService activity) {
+    public PdfController(PdfRepository pdfRepository, RatingRepository ratingRepository, CurrentUser currentUser, ActivityService activity,
+                         com.crispprep.reviews.repository.ReviewRepository reviewRepository) {
         this.activity = activity;
+        this.reviewRepository = reviewRepository;
         this.pdfRepository = pdfRepository;
         this.ratingRepository = ratingRepository;
         this.currentUser = currentUser;
@@ -93,6 +96,8 @@ public class PdfController {
         if (jwt != null) {
             out.put("myRating", ratingRepository.findByPdfIdAndUserId(id, Long.valueOf(jwt.getSubject()))
                     .map(Rating::getStars).orElse(null));
+            out.put("myReview", reviewRepository.findByPdfIdAndUserId(id, Long.valueOf(jwt.getSubject()))
+                    .map(r -> Map.<String, Object>of("text", r.getText(), "approved", r.isApproved())).orElse(null));
         }
         return out;
     }

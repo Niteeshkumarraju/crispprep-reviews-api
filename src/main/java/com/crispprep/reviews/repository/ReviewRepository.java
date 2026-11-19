@@ -16,6 +16,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     long countByApprovedFalse();
 
+    java.util.Optional<Review> findByPdfIdAndUserId(Long pdfId, Long userId);
+
     List<Review> findByUserIdOrderByCreatedAtDesc(Long userId);
 
     @org.springframework.data.jpa.repository.Modifying

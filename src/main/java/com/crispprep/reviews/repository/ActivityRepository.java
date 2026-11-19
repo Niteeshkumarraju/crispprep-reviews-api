@@ -41,6 +41,12 @@ public interface ActivityRepository extends JpaRepository<ActivityEvent, Long> {
 
     List<ActivityEvent> findTop100ByUserIdOrderByCreatedAtDesc(Long userId);
 
+    /** The live feed: newest first, paged by id ("load older" passes the last id it has). */
+    @Query("SELECT e FROM ActivityEvent e WHERE (:before IS NULL OR e.id < :before) ORDER BY e.id DESC")
+    List<ActivityEvent> feed(@Param("before") Long before, Pageable page);
+
+    List<ActivityEvent> findByCreatedAtGreaterThanEqualOrderByCreatedAtDesc(Instant since);
+
     interface SlugTypeCount { String getSlug(); Type getType(); Long getN(); }
 
     @Query("SELECT e.pdfSlug AS slug, e.type AS type, COUNT(e) AS n FROM ActivityEvent e WHERE e.pdfSlug IS NOT NULL AND e.type IN :types GROUP BY e.pdfSlug, e.type")

@@ -82,6 +82,16 @@ public class QuizController {
         return out;
     }
 
+    /** Public: extra practice after the daily quiz. Random questions (not today's), WITH answers: checked in the browser, no streak. */
+    @GetMapping("/practice")
+    public List<Map<String, Object>> practice(@RequestParam(defaultValue = "5") int n) {
+        Set<Q> today = new HashSet<>(forDay(StreakService.today()));
+        List<Q> pool = new ArrayList<>(bank); pool.removeAll(today);
+        Collections.shuffle(pool);
+        return pool.subList(0, Math.min(Math.max(n, 1), 10)).stream()
+                .map(q -> Map.<String, Object>of("q", q.q(), "o", q.o(), "a", q.a(), "x", q.x(), "topic", q.t())).toList();
+    }
+
     /** Submit today's answers (signed in). One attempt per day; it counts as a study day for the streak. */
     @PostMapping("/today")
     public Map<String, Object> submit(@Valid @RequestBody Answers body, @AuthenticationPrincipal Jwt jwt) {

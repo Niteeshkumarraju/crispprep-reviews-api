@@ -4,6 +4,9 @@ import com.crispprep.reviews.entity.ActivityEvent.Type;
 import com.crispprep.reviews.entity.Pdf;
 import com.crispprep.reviews.entity.User;
 import com.crispprep.reviews.repository.*;
+import com.crispprep.reviews.service.AdminGuard;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -27,9 +30,11 @@ public class AdminController {
     private final RatingRepository ratings;
     private final ReviewRepository reviews;
     private final PdfRepository pdfs;
+    private final AdminGuard guard;
 
     public AdminController(UserRepository users, ActivityRepository events, RatingRepository ratings,
-                           ReviewRepository reviews, PdfRepository pdfs) {
+                           ReviewRepository reviews, PdfRepository pdfs, AdminGuard guard) {
+        this.guard = guard;
         this.users = users;
         this.events = events;
         this.ratings = ratings;
@@ -55,7 +60,8 @@ public class AdminController {
     }
 
     @GetMapping("/api/admin/stats")
-    public Map<String, Object> stats() {
+    public Map<String, Object> stats(@AuthenticationPrincipal Jwt jwt) {
+        guard.require(jwt);
         Map<String, String> titles = pdfs.findAll().stream().filter(p -> p.getSlug() != null)
                 .collect(Collectors.toMap(Pdf::getSlug, Pdf::getTitle, (a, b) -> a));
         Map<String, Object> out = new LinkedHashMap<>();
@@ -105,7 +111,9 @@ public class AdminController {
 
     /** Users list: search by name/email, newest first, 25 per page, with each user's activity counts. */
     @GetMapping("/api/admin/users")
-    public Map<String, Object> users(@RequestParam(defaultValue = "") String q, @RequestParam(defaultValue = "0") int page) {
+    public Map<String, Object> users(@RequestParam(defaultValue = "") String q, @RequestParam(defaultValue = "0") int page,
+                                     @AuthenticationPrincipal Jwt jwt) {
+        guard.require(jwt);
         String query = q.trim().toLowerCase(Locale.ROOT);
         if (query.length() > 120) query = query.substring(0, 120);
         Page<User> p = users.search(query, PageRequest.of(Math.max(page, 0), 25, Sort.by(Sort.Direction.DESC, "createdAt")));
@@ -119,6 +127,7 @@ public class AdminController {
             m.put("name", u.getName());
             m.put("email", u.getEmail());
             m.put("role", u.getRole().name());
+            m.put("blocked", u.isBlocked());
             m.put("joined", u.getCreatedAt() == null ? null : u.getCreatedAt().toString());
             m.put("lastLogin", u.getLastLoginAt() == null ? null : u.getLastLoginAt().toString());
             m.put("method", u.getGoogleId() != null && u.getPasswordHash() != null ? "Google + email"

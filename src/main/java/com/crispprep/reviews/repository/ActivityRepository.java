@@ -39,6 +39,18 @@ public interface ActivityRepository extends JpaRepository<ActivityEvent, Long> {
     @Query("SELECT e.userId AS userId, COUNT(e) AS n FROM ActivityEvent e WHERE e.type = :type AND e.userId IN :ids GROUP BY e.userId")
     List<UserCount> countPerUser(@Param("type") Type type, @Param("ids") Collection<Long> ids);
 
+    List<ActivityEvent> findTop100ByUserIdOrderByCreatedAtDesc(Long userId);
+
+    interface SlugTypeCount { String getSlug(); Type getType(); Long getN(); }
+
+    @Query("SELECT e.pdfSlug AS slug, e.type AS type, COUNT(e) AS n FROM ActivityEvent e WHERE e.pdfSlug IS NOT NULL AND e.type IN :types GROUP BY e.pdfSlug, e.type")
+    List<SlugTypeCount> countBySlugAndType(@Param("types") Collection<Type> types);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM ActivityEvent e WHERE e.userId = :userId")
+    int deleteForUser(@Param("userId") Long userId);
+
     @Modifying
     @Transactional
     @Query("DELETE FROM ActivityEvent e WHERE e.createdAt < :before")

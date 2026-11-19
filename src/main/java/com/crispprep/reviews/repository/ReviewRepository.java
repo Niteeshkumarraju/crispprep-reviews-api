@@ -15,4 +15,11 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     long countByUserId(Long userId);
 
     long countByApprovedFalse();
+
+    List<Review> findByUserIdOrderByCreatedAtDesc(Long userId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Query("DELETE FROM Review r WHERE r.user.id = :userId")
+    int deleteForUser(@org.springframework.data.repository.query.Param("userId") Long userId);
 }

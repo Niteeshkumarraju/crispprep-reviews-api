@@ -31,9 +31,12 @@ public class AuthController {
     private final String adminEmail;
     private final GoogleTokenVerifier google;
     private final ActivityService activity;
+    private final boolean emailSignup;
 
     public AuthController(UserRepository users, PasswordEncoder passwordEncoder, TokenService tokens,
-                          GoogleTokenVerifier google, ActivityService activity, @Value("${app.admin-email}") String adminEmail) {
+                          GoogleTokenVerifier google, ActivityService activity, @Value("${app.admin-email}") String adminEmail,
+                          @Value("${app.email-signup:false}") boolean emailSignup) {
+        this.emailSignup = emailSignup;
         this.activity = activity;
         this.users = users;
         this.passwordEncoder = passwordEncoder;
@@ -43,6 +46,7 @@ public class AuthController {
     }
 
     private AuthResponse response(User u, ActivityEvent.Type what, String how) {
+        if (u.isBlocked()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This account has been blocked. Contact CrispPrep if you think this is a mistake.");
         if (u.getRole() != User.Role.ADMIN && roleFor(u.getEmail()) == User.Role.ADMIN) {   // ADMIN_EMAIL set later
             u.makeAdmin();
         }
@@ -55,6 +59,9 @@ public class AuthController {
     @PostMapping("/api/auth/register")
     @ResponseStatus(HttpStatus.CREATED)
     public AuthResponse register(@Valid @RequestBody RegisterRequest req) {
+        if (!emailSignup) {   // only Google-verified emails can create accounts (no fake addresses)
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "New accounts use Google sign-in. Please continue with Google.");
+        }
         String email = req.email().trim().toLowerCase();
         if (users.existsByEmail(email)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "An account with this email already exists");

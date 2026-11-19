@@ -18,6 +18,13 @@ public interface RatingRepository extends JpaRepository<Rating, Long> {
 
     long countByUserId(Long userId);
 
+    List<Rating> findByUserIdOrderByCreatedAtDesc(Long userId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @Query("DELETE FROM Rating r WHERE r.user.id = :userId")
+    int deleteForUser(@Param("userId") Long userId);
+
     @Query("SELECT AVG(r.stars) FROM Rating r")
     Double averageAll();
 

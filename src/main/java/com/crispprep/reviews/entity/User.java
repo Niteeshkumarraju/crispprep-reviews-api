@@ -34,6 +34,9 @@ public class User {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
+    @Column(name = "blocked")
+    private Boolean blocked;              // null or false = allowed; true = blocked by an admin
+
     protected User() { }
 
     public User(String email, String name, String passwordHash, Role role) {
@@ -48,6 +51,10 @@ public class User {
 
     /** Used when ADMIN_EMAIL is set after this account already exists. */
     public void makeAdmin() { this.role = Role.ADMIN; }
+
+    public boolean isBlocked() { return Boolean.TRUE.equals(blocked); }
+    public void setBlocked(boolean b) { this.blocked = b; }
+    public void setRole(Role role) { this.role = role; }
 
     public void touchLogin() { this.lastLoginAt = Instant.now(); }
     public Instant getLastLoginAt() { return lastLoginAt; }

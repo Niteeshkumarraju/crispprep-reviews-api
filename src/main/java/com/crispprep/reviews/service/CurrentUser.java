@@ -18,7 +18,9 @@ public class CurrentUser {
     }
 
     public User from(Jwt jwt) {
-        return users.findById(Long.valueOf(jwt.getSubject()))
+        User u = users.findById(Long.valueOf(jwt.getSubject()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Account not found, please log in again"));
+        if (u.isBlocked()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This account has been blocked.");
+        return u;
     }
 }

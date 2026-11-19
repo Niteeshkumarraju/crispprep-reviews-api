@@ -82,7 +82,7 @@ public class ProgressController {
         out.put("next", next);
         out.put("rewards", list);
         out.put("tiers", List.of(Map.of("friends", 1, "gift", "Puzzles & Seating Master + 1 streak freeze"),
-                Map.of("friends", 3, "gift", "Pick any 2 locked books"), Map.of("friends", 5, "gift", "All premium books, now and future")));
+                Map.of("friends", 3, "gift", "Unlock any 2 premium books you choose"), Map.of("friends", 5, "gift", "Every premium book, including new ones we add")));
         return out;
     }
 

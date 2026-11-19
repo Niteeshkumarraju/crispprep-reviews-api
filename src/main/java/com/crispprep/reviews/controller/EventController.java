@@ -24,16 +24,24 @@ public class EventController {
     private final ActivityService activity;
     private final PdfRepository pdfs;
 
-    public EventController(ActivityService activity, PdfRepository pdfs) {
+    private final com.crispprep.reviews.repository.UserRepository users;
+    private final com.crispprep.reviews.service.StreakService streaks;
+
+    public EventController(ActivityService activity, PdfRepository pdfs, com.crispprep.reviews.repository.UserRepository users,
+                           com.crispprep.reviews.service.StreakService streaks) {
+        this.users = users;
+        this.streaks = streaks;
         this.activity = activity;
         this.pdfs = pdfs;
     }
 
     @PostMapping("/api/events")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @org.springframework.transaction.annotation.Transactional
     public void record(@Valid @RequestBody EventRequest req, @AuthenticationPrincipal Jwt jwt) {
         if (pdfs.findBySlug(req.slug()).isEmpty()) return;          // only real PDFs are counted
         Long userId = jwt == null ? null : Long.valueOf(jwt.getSubject());
         activity.record(ActivityEvent.Type.valueOf(req.type()), userId, req.slug(), null);
+        if (userId != null) users.findById(userId).filter(u -> !u.isBlocked()).ifPresent(streaks::record);   // a study day for the streak
     }
 }

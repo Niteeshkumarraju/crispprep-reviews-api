@@ -32,10 +32,15 @@ public class AuthController {
     private final GoogleTokenVerifier google;
     private final ActivityService activity;
     private final boolean emailSignup;
+    private final com.crispprep.reviews.service.RewardService rewards;
+    private final com.crispprep.reviews.repository.UserProgressRepository progressRepo;
 
     public AuthController(UserRepository users, PasswordEncoder passwordEncoder, TokenService tokens,
                           GoogleTokenVerifier google, ActivityService activity, @Value("${app.admin-email}") String adminEmail,
-                          @Value("${app.email-signup:false}") boolean emailSignup) {
+                          @Value("${app.email-signup:false}") boolean emailSignup,
+                          com.crispprep.reviews.service.RewardService rewards, com.crispprep.reviews.repository.UserProgressRepository progressRepo) {
+        this.rewards = rewards;
+        this.progressRepo = progressRepo;
         this.emailSignup = emailSignup;
         this.activity = activity;
         this.users = users;
@@ -67,6 +72,7 @@ public class AuthController {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "An account with this email already exists");
         }
         User saved = users.save(new User(email, req.name().trim(), passwordEncoder.encode(req.password()), roleFor(email)));
+        applyInvite(saved, req.ref());
         return response(saved, ActivityEvent.Type.SIGNUP, "email");
     }
 
@@ -76,6 +82,16 @@ public class AuthController {
                 .filter(x -> x.getPasswordHash() != null && passwordEncoder.matches(req.password(), x.getPasswordHash()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Wrong email or password"));
         return response(u, ActivityEvent.Type.LOGIN, "email");
+    }
+
+    /** Invited by a friend (new accounts only): the friend's gift is a head start and one streak freeze. */
+    private void applyInvite(User user, String ref) {
+        if (ref == null || ref.isBlank()) return;
+        rewards.userByCode(ref).filter(inviter -> !inviter.getId().equals(user.getId())).ifPresent(inviter -> {
+            var p = rewards.of(user);
+            p.setReferredBy(inviter.getId(), com.crispprep.reviews.service.RewardService.FRIEND_HEAD_START, com.crispprep.reviews.service.RewardService.FRIEND_GIFT_FREEZES);
+            progressRepo.save(p);
+        });
     }
 
     private User.Role roleFor(String email) {
@@ -123,6 +139,7 @@ public class AuthController {
                     created.linkGoogle(googleId);
                     return users.save(created);
                 }));
+        if (isNew) applyInvite(user, req.ref());
         return response(user, isNew ? ActivityEvent.Type.SIGNUP : ActivityEvent.Type.LOGIN, "google");
     }
 

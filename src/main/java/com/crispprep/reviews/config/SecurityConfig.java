@@ -84,6 +84,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/pdfs/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/events").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/quiz/today", "/api/referrals/leaderboard").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated())
             .oauth2ResourceServer(o -> o.jwt(j -> j.jwtAuthenticationConverter(converter)));

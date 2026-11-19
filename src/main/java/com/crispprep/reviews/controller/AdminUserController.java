@@ -35,10 +35,15 @@ public class AdminUserController {
     private final AdminActionRepository actions;
     private final PdfRepository pdfs;
     private final String ownerEmail;
+    private final com.crispprep.reviews.repository.UserProgressRepository progressRepo;
+    private final com.crispprep.reviews.repository.RewardGrantRepository grantRepo;
 
     public AdminUserController(AdminGuard guard, UserRepository users, ActivityRepository events, RatingRepository ratings,
                                ReviewRepository reviews, AdminNoteRepository notes, AdminActionRepository actions,
-                               PdfRepository pdfs, @Value("${app.admin-email}") String ownerEmail) {
+                               PdfRepository pdfs, @Value("${app.admin-email}") String ownerEmail,
+                               com.crispprep.reviews.repository.UserProgressRepository progressRepo, com.crispprep.reviews.repository.RewardGrantRepository grantRepo) {
+        this.progressRepo = progressRepo;
+        this.grantRepo = grantRepo;
         this.guard = guard;
         this.users = users;
         this.events = events;
@@ -103,6 +108,15 @@ public class AdminUserController {
             return m;
         }).toList());
         out.put("notes", notes.findByUserIdOrderByCreatedAtDesc(id).stream().map(this::note).toList());
+        progressRepo.findById(id).ifPresent(p -> {
+            Map<String, Object> g = new LinkedHashMap<>();
+            g.put("streak", com.crispprep.reviews.service.StreakService.shown(p)); g.put("best", p.getStreakBest()); g.put("freezes", p.getFreezes());
+            g.put("refCode", p.getRefCode()); g.put("friends", progressRepo.countByReferredByAndReferralQualifiedAtIsNotNull(id));
+            g.put("invitedBy", p.getReferredBy() == null ? null : users.findById(p.getReferredBy()).map(User::getName).orElse("Deleted user"));
+            g.put("credits", p.getCredits()); g.put("allAccess", p.isAllAccess());
+            g.put("rewards", grantRepo.findByUserId(id).stream().map(r -> Map.of("slug", r.getSlug(), "reason", r.getReason(), "at", iso(r.getCreatedAt()))).toList());
+            out.put("progress", g);
+        });
         out.put("adminLog", actions.findTop20ByTargetUserIdOrderByCreatedAtDesc(id).stream()
                 .map(a -> Map.<String, Object>of("action", a.getAction(), "at", iso(a.getCreatedAt()))).toList());
         return out;
@@ -164,6 +178,8 @@ public class AdminUserController {
         reviews.deleteForUser(id);
         notes.deleteForUser(id);
         events.deleteForUser(id);
+        grantRepo.deleteAll(grantRepo.findByUserId(id));
+        progressRepo.findById(id).ifPresent(progressRepo::delete);
         users.delete(u);
         actions.save(new AdminAction(admin.getId(), null, "deleted account " + email));
         return Map.of("deleted", email);

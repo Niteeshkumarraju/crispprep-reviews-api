@@ -35,9 +35,11 @@ public class AdminFeedController {
     private final UserRepository users;
     private final PdfRepository pdfs;
     private final AdminUserController adminUsers;   // reuses the PDFs table for the export
+    private final com.crispprep.reviews.repository.AdminActionRepository actions;
 
     public AdminFeedController(AdminGuard guard, ActivityRepository events, UserRepository users, PdfRepository pdfs,
-                               AdminUserController adminUsers) {
+                               AdminUserController adminUsers, com.crispprep.reviews.repository.AdminActionRepository actions) {
+        this.actions = actions;
         this.guard = guard;
         this.events = events;
         this.users = users;
@@ -105,16 +107,18 @@ public class AdminFeedController {
         return t == null ? "" : t.atZone(IST).toLocalDateTime().withNano(0).toString().replace('T', ' ');
     }
 
+    /** Exports contain student emails, so every download goes into the admin audit log. */
+    private void logExport(User admin, String what) {
+        actions.save(new com.crispprep.reviews.entity.AdminAction(admin.getId(), null, "exported " + what));
+    }
+
     @GetMapping("/export/users.csv")
     public ResponseEntity<byte[]> exportUsers(@AuthenticationPrincipal Jwt jwt) {
-        guard.require(jwt);
+        logExport(guard.require(jwt), "users.csv");
         List<User> all = users.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
-        List<Long> ids = all.stream().map(User::getId).toList();
         Map<Long, Long> rd = new HashMap<>(), dl = new HashMap<>();
-        if (!ids.isEmpty()) {
-            events.countPerUser(ActivityEvent.Type.READ, ids).forEach(c -> rd.put(c.getUserId(), c.getN()));
-            events.countPerUser(ActivityEvent.Type.DOWNLOAD, ids).forEach(c -> dl.put(c.getUserId(), c.getN()));
-        }
+        events.countAllPerUser(ActivityEvent.Type.READ).forEach(c -> rd.put(c.getUserId(), c.getN()));
+        events.countAllPerUser(ActivityEvent.Type.DOWNLOAD).forEach(c -> dl.put(c.getUserId(), c.getN()));
         List<List<Object>> rows = all.stream().map(u -> List.<Object>of(
                 u.getId(), u.getName(), u.getEmail(), u.getRole().name(), u.isBlocked() ? "yes" : "no",
                 u.getGoogleId() != null ? (u.getPasswordHash() != null ? "Google + email" : "Google") : "Email",
@@ -124,7 +128,8 @@ public class AdminFeedController {
 
     @GetMapping("/export/pdfs.csv")
     public ResponseEntity<byte[]> exportPdfs(@AuthenticationPrincipal Jwt jwt) {
-        List<Map<String, Object>> table = adminUsers.pdfTable(jwt);   // checks admin too
+        logExport(guard.require(jwt), "pdfs.csv");
+        List<Map<String, Object>> table = adminUsers.pdfTable(jwt);
         List<List<Object>> rows = table.stream().map(p -> List.<Object>of(p.get("slug"), p.get("title"), p.get("subject"),
                 p.get("reads"), p.get("downloads"), p.get("average"), p.get("ratings"))).toList();
         return csv("pdfs", List.of("slug", "title", "subject", "reads", "downloads", "average_rating", "ratings"), rows);
@@ -132,8 +137,9 @@ public class AdminFeedController {
 
     @GetMapping("/export/activity.csv")
     public ResponseEntity<byte[]> exportActivity(@RequestParam(defaultValue = "30") int days, @AuthenticationPrincipal Jwt jwt) {
-        guard.require(jwt);
+        User admin = guard.require(jwt);
         int d = Math.min(Math.max(days, 1), 365);
+        logExport(admin, "activity.csv (" + d + " days)");
         List<ActivityEvent> list = events.findByCreatedAtGreaterThanEqualOrderByCreatedAtDesc(Instant.now().minus(Duration.ofDays(d)));
         Map<Long, User> who = usersFor(list);
         Map<String, String> t = titles();

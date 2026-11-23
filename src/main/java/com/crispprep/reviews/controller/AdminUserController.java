@@ -37,11 +37,14 @@ public class AdminUserController {
     private final String ownerEmail;
     private final com.crispprep.reviews.repository.UserProgressRepository progressRepo;
     private final com.crispprep.reviews.repository.RewardGrantRepository grantRepo;
+    private final com.crispprep.reviews.repository.QuizAttemptRepository quizRepo;
 
     public AdminUserController(AdminGuard guard, UserRepository users, ActivityRepository events, RatingRepository ratings,
                                ReviewRepository reviews, AdminNoteRepository notes, AdminActionRepository actions,
                                PdfRepository pdfs, @Value("${app.admin-email}") String ownerEmail,
-                               com.crispprep.reviews.repository.UserProgressRepository progressRepo, com.crispprep.reviews.repository.RewardGrantRepository grantRepo) {
+                               com.crispprep.reviews.repository.UserProgressRepository progressRepo, com.crispprep.reviews.repository.RewardGrantRepository grantRepo,
+                               com.crispprep.reviews.repository.QuizAttemptRepository quizRepo) {
+        this.quizRepo = quizRepo;
         this.progressRepo = progressRepo;
         this.grantRepo = grantRepo;
         this.guard = guard;
@@ -166,7 +169,7 @@ public class AdminUserController {
         return Map.of("id", u.getId(), "role", role.name());
     }
 
-    /** Deletes the account and everything linked to it (ratings, reviews, notes, activity). Cannot be undone. */
+    /** Deletes the account and everything linked to it (ratings, reviews, notes, activity, quiz attempts, streak, rewards). Cannot be undone. */
     @DeleteMapping("/users/{id}")
     @Transactional
     public Map<String, Object> delete(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
@@ -178,6 +181,7 @@ public class AdminUserController {
         reviews.deleteForUser(id);
         notes.deleteForUser(id);
         events.deleteForUser(id);
+        quizRepo.deleteForUser(id);
         grantRepo.deleteAll(grantRepo.findByUserId(id));
         progressRepo.findById(id).ifPresent(progressRepo::delete);
         users.delete(u);

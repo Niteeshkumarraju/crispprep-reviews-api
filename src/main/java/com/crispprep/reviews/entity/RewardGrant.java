@@ -5,7 +5,8 @@ import java.time.Instant;
 
 /** One book a user has unlocked, and why. Unlocked books stay unlocked forever. */
 @Entity
-@Table(name = "reward_grant", uniqueConstraints = @UniqueConstraint(name = "uk_grant_user_slug", columnNames = {"user_id", "slug"}))
+@Table(name = "reward_grant", uniqueConstraints = @UniqueConstraint(name = "uk_grant_user_slug", columnNames = {"user_id", "slug"}),
+       indexes = @Index(name = "ix_grant_slug", columnList = "slug"))
 public class RewardGrant {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     @Column(name = "user_id", nullable = false) private Long userId;

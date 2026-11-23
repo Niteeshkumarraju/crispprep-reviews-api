@@ -4,7 +4,8 @@ import jakarta.persistence.*;
 import java.time.Instant;
 
 @Entity
-@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"pdf_id", "user_id"}))
+@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"pdf_id", "user_id"}),
+       indexes = {@Index(name = "ix_review_user", columnList = "user_id"), @Index(name = "ix_review_approved_time", columnList = "approved, created_at")})
 public class Review {
 
     @Id

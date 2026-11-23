@@ -133,6 +133,7 @@ public class AuthController {
         User user = users.findByGoogleId(googleId).orElseGet(() ->
                 users.findByEmail(cleanEmail).map(existing -> {          // link an existing email/password account
                     existing.linkGoogle(googleId);
+                    existing.clearPassword();   // whoever set that password may not own this email
                     return users.save(existing);
                 }).orElseGet(() -> {                                     // first time: create a new account
                     User created = new User(cleanEmail, displayName, null, roleFor(cleanEmail));

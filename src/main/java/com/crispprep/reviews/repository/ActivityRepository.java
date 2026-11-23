@@ -39,6 +39,10 @@ public interface ActivityRepository extends JpaRepository<ActivityEvent, Long> {
     @Query("SELECT e.userId AS userId, COUNT(e) AS n FROM ActivityEvent e WHERE e.type = :type AND e.userId IN :ids GROUP BY e.userId")
     List<UserCount> countPerUser(@Param("type") Type type, @Param("ids") Collection<Long> ids);
 
+    /** Per-user counts for every user at once (no IN list, so it works for any number of users). */
+    @Query("SELECT e.userId AS userId, COUNT(e) AS n FROM ActivityEvent e WHERE e.type = :type AND e.userId IS NOT NULL GROUP BY e.userId")
+    List<UserCount> countAllPerUser(@Param("type") Type type);
+
     List<ActivityEvent> findTop100ByUserIdOrderByCreatedAtDesc(Long userId);
 
     /** The live feed: newest first, paged by id ("load older" passes the last id it has). */

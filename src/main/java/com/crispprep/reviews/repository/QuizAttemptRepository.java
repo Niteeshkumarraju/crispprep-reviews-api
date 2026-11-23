@@ -9,4 +9,9 @@ public interface QuizAttemptRepository extends JpaRepository<QuizAttempt, Long> 
     Optional<QuizAttempt> findByUserIdAndDay(Long userId, LocalDate day);
     long countByDay(LocalDate day);
     long countByUserId(Long userId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Query("DELETE FROM QuizAttempt q WHERE q.userId = :userId")
+    int deleteForUser(@org.springframework.data.repository.query.Param("userId") Long userId);
 }

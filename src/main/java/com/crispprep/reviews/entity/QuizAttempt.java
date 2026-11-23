@@ -6,7 +6,8 @@ import java.time.LocalDate;
 
 /** One user's Daily Quiz result for one IST day (one attempt per day). */
 @Entity
-@Table(name = "quiz_attempt", uniqueConstraints = @UniqueConstraint(name = "uk_quiz_user_day", columnNames = {"user_id", "day"}))
+@Table(name = "quiz_attempt", uniqueConstraints = @UniqueConstraint(name = "uk_quiz_user_day", columnNames = {"user_id", "day"}),
+       indexes = @Index(name = "ix_quiz_day", columnList = "day"))
 public class QuizAttempt {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     @Column(name = "user_id", nullable = false) private Long userId;

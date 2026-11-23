@@ -6,7 +6,7 @@ import java.time.LocalDate;
 
 /** Streak, referral and reward state for one user (created on first use). Days are IST calendar days. */
 @Entity
-@Table(name = "user_progress")
+@Table(name = "user_progress", indexes = @Index(name = "ix_progress_referred_by", columnList = "referred_by"))
 public class UserProgress {
 
     @Id

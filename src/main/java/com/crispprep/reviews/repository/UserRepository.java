@@ -30,4 +30,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /** Admin users list: search by name or email (empty q = everyone), newest first via the Pageable. */
     @Query("SELECT u FROM User u WHERE :q = '' OR LOWER(u.email) LIKE CONCAT('%', :q, '%') OR LOWER(u.name) LIKE CONCAT('%', :q, '%')")
     Page<User> search(@Param("q") String q, Pageable page);
+
+    /** Accounts linked to Google keep no password (closes the pre-account-takeover gap). */
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @Query("UPDATE User u SET u.passwordHash = NULL WHERE u.googleId IS NOT NULL AND u.passwordHash IS NOT NULL")
+    int clearPasswordsOfGoogleAccounts();
 }

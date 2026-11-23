@@ -48,6 +48,8 @@ public class User {
 
     /** Connect a Google account (Google's stable user id, the token's "sub"). */
     public void linkGoogle(String googleId) { this.googleId = googleId; }
+    /** After Google proves who owns the email, any password set before that is no longer trusted. */
+    public void clearPassword() { this.passwordHash = null; }
 
     /** Used when ADMIN_EMAIL is set after this account already exists. */
     public void makeAdmin() { this.role = Role.ADMIN; }

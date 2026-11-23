@@ -18,6 +18,10 @@ public class Pdf {
 
     private String subject;
 
+    /** Set when the admin clicks Launch for a PDF marked "launch": "admin" in resources.json (null = waiting). */
+    @Column(name = "launched_at")
+    private java.time.Instant launchedAt;
+
     protected Pdf() { }
 
     public Pdf(String title, String subject) {
@@ -39,4 +43,7 @@ public class Pdf {
     public String getSlug() { return slug; }
     public String getTitle() { return title; }
     public String getSubject() { return subject; }
+    public java.time.Instant getLaunchedAt() { return launchedAt; }
+    public void launch() { this.launchedAt = java.time.Instant.now(); }
+    public void unlaunch() { this.launchedAt = null; }
 }

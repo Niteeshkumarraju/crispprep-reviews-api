@@ -7,4 +7,6 @@ import java.util.Optional;
 public interface PdfRepository extends JpaRepository<Pdf, Long> {
 
     Optional<Pdf> findBySlug(String slug);
+
+    java.util.List<Pdf> findByLaunchedAtIsNotNull();
 }
